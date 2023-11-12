@@ -1,51 +1,77 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-
+library(dplyr)
+library(ggplot2)
+library(reactable)
+library(reactablefmtr)
+library(tidyverse)
+library(ShortRead)
 library(shiny)
 
-# Define UI for application that draws a histogram
+# Define the UI
 ui <- fluidPage(
-
-    # Application title
-    titlePanel("Old Faithful Geyser Data"),
-
-    # Sidebar with a slider input for number of bins 
-    sidebarLayout(
-        sidebarPanel(
-            sliderInput("bins",
-                        "Number of bins:",
-                        min = 1,
-                        max = 50,
-                        value = 30)
-        ),
-
-        # Show a plot of the generated distribution
-        mainPanel(
-           plotOutput("distPlot")
-        )
+  titlePanel("Next-Gene Sequencing"),
+  
+  sidebarLayout(
+    sidebarPanel(
+      fileInput("file", "Choose a FASTQ file"),
+      selectInput("x_var", "Select X Variable", ""),
+      selectInput("y_var", "Select Y Variable", ""),
+      selectInput("fill_var", "Select Fill Variable", ""),
+      selectInput("chart_type", "Select Chart Type",
+                  choices = c("Heatmap", "Volcano Plot")),
+      actionButton("plot_button", "Plot")
+    ),
+    
+    mainPanel(
+      plotOutput("plot")
     )
+  )
 )
 
-# Define server logic required to draw a histogram
-server <- function(input, output) {
-
-    output$distPlot <- renderPlot({
-        # generate bins based on input$bins from ui.R
-        x    <- faithful[, 2]
-        bins <- seq(min(x), max(x), length.out = input$bins + 1)
-
-        # draw the histogram with the specified number of bins
-        hist(x, breaks = bins, col = 'darkgray', border = 'white',
-             xlab = 'Waiting time to next eruption (in mins)',
-             main = 'Histogram of waiting times')
-    })
+# Define the server logic
+server <- function(input, output, session) {
+  
+  data <- reactive({
+    req(input$file)
+    inFile <- input$file
+    validate(
+      need(tolower(sub('.*[.]', '', inFile$name)) == "fastq", "Please upload a FASTQ file.")
+    )
+    
+    # Read FASTQ file
+    fastq_data <- readFastq(inFile$datapath)
+    
+    # Convert to tibble
+    fastq_df <- as.data.frame(fastq_data)
+    
+    # Update selectInput choices dynamically based on columns in the dataframe
+    updateSelectInput(session, "x_var", choices = names(fastq_df))
+    updateSelectInput(session, "y_var", choices = names(fastq_df))
+    updateSelectInput(session, "fill_var", choices = names(fastq_df))
+    
+    return(fastq_df)
+  })
+  
+  output$plot <- renderPlot({
+    req(data())
+    
+    chart_type <- input$chart_type
+    x_var <- input$x_var
+    y_var <- input$y_var
+    fill_var <- input$fill_var
+    
+    if (chart_type == "Heatmap") {
+      ggplot(data(), aes_string(x = x_var, y = y_var, fill = fill_var)) +
+        geom_tile() +
+        labs(title = "Heatmap") +
+        theme_minimal()
+    } else if (chart_type == "Volcano Plot") {
+      ggplot(data(), aes_string(x = x_var, y = y_var, color = fill_var)) +
+        geom_point() +
+        labs(title = "Volcano Plot") +
+        theme_minimal()
+    }
+  })
 }
 
-# Run the application 
-shinyApp(ui = ui, server = server)
+# Run the application
+shinyApp(ui, server)

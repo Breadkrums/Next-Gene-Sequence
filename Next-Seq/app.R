@@ -1,3 +1,9 @@
+if (!requireNamespace("BiocManager", quietly = TRUE))
+  install.packages("BiocManager")
+if(FALSE){
+  BiocManager::install("ShortRead")
+}
+
 library(dplyr)
 library(ggplot2)
 library(reactable)
@@ -8,7 +14,21 @@ library(shiny)
 
 # Define the UI
 ui <- fluidPage(
-  titlePanel("Next-Gene Sequencing"),
+  tags$head(
+    tags$style(
+      ".title {  
+      background: url('https://cdn.pixabay.com/photo/2018/07/15/10/44/dna-3539309_1280.jpg');
+      background-repeat: no-repeat;
+      background-size: cover;
+      padding-top: 40px; 
+      padding-bottom: 40px;
+      padding-left: 40px;
+      padding-right: 40px;
+    }")
+  ),
+  headerPanel(
+    h1("Next-Gene Sequencing", class = "title", style="color: white;")
+  ),
   
   sidebarLayout(
     sidebarPanel(
@@ -17,7 +37,8 @@ ui <- fluidPage(
       selectInput("y_var", "Select Y Variable", ""),
       selectInput("fill_var", "Select Fill Variable", ""),
       selectInput("chart_type", "Select Chart Type",
-                  choices = c("Heatmap", "Volcano Plot")),
+                  choices = c("Heatmap",
+                              "Volcano Plot")),
       actionButton("plot_button", "Plot")
     ),
     
@@ -26,6 +47,7 @@ ui <- fluidPage(
     )
   )
 )
+
 
 # Define the server logic
 server <- function(input, output, session) {
